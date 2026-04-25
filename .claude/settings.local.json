@@ -11,7 +11,8 @@
       "Bash(python3 *)",
       "Bash(./gradlew :app:assembleDebug)",
       "Bash(./gradlew :app:lintDebug)",
-      "Bash(./gradlew assembleDebug)"
+      "Bash(./gradlew assembleDebug)",
+      "Bash(./gradlew test *)"
     ]
   }
 }

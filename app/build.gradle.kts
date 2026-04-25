@@ -92,6 +92,7 @@ dependencies {
     testImplementation(libs.turbine)
     testImplementation(libs.assertk)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.ktor.client.mock)
 
     // Instrumented tests (kept for existing scaffolding; not actively used)
     androidTestImplementation(platform(libs.androidx.compose.bom))

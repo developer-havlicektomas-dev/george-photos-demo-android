@@ -8,6 +8,7 @@ import io.ktor.client.request.get as ktorGet
 import io.ktor.client.request.parameter
 import io.ktor.client.request.url
 import io.ktor.client.statement.HttpResponse
+import io.ktor.serialization.ContentConvertException
 import io.ktor.util.network.UnresolvedAddressException
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
@@ -29,20 +30,22 @@ suspend inline fun <reified Response : Any> HttpClient.get(
 suspend inline fun <reified T> safeCall(
     execute: () -> HttpResponse,
 ): Result<T, DataError.Network> {
-    val response = try {
-        execute()
+    return try {
+        responseToResult(execute())
     } catch (e: UnresolvedAddressException) {
         e.printStackTrace()
-        return Result.Error(DataError.Network.NO_INTERNET)
+        Result.Error(DataError.Network.NO_INTERNET)
+    } catch (e: ContentConvertException) {
+        e.printStackTrace()
+        Result.Error(DataError.Network.SERIALIZATION)
     } catch (e: SerializationException) {
         e.printStackTrace()
-        return Result.Error(DataError.Network.SERIALIZATION)
+        Result.Error(DataError.Network.SERIALIZATION)
     } catch (e: Exception) {
         if (e is CancellationException) throw e
         e.printStackTrace()
-        return Result.Error(DataError.Network.UNKNOWN)
+        Result.Error(DataError.Network.UNKNOWN)
     }
-    return responseToResult(response)
 }
 
 suspend inline fun <reified T> responseToResult(
