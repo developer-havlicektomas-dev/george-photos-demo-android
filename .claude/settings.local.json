@@ -12,7 +12,8 @@
       "Bash(./gradlew :app:assembleDebug)",
       "Bash(./gradlew :app:lintDebug)",
       "Bash(./gradlew assembleDebug)",
-      "Bash(./gradlew test *)"
+      "Bash(./gradlew test *)",
+      "Bash(./gradlew lint *)"
     ]
   }
 }

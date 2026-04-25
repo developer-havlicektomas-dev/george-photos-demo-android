@@ -1,3 +1,40 @@
 <resources>
     <string name="app_name">PhotosApp</string>
+
+    <!-- Branding -->
+    <string name="brand_name">Photos</string>
+    <string name="brand_dot">.</string>
+
+    <!-- Home screen -->
+    <string name="home_photo_count">%1$d photos</string>
+    <string name="home_filter_action">Filter photos</string>
+    <string name="home_clear_active_filters">Clear all</string>
+    <string name="home_active_filter_remove">Remove filter %1$s</string>
+    <string name="home_empty_title">No photos to show</string>
+    <string name="home_empty_subtitle">Pull down to refresh, or adjust your filters.</string>
+
+    <!-- Filter sheet -->
+    <string name="filter_sheet_title">Filter by tag</string>
+    <string name="filter_sheet_subtitle">%1$d tags · %2$d selected</string>
+    <string name="filter_sheet_clear">Clear</string>
+    <string name="filter_sheet_cancel">Cancel</string>
+    <string name="filter_sheet_apply">Apply</string>
+
+    <!-- Detail screen -->
+    <string name="detail_back">Back</string>
+
+    <!-- Errors -->
+    <string name="error_no_internet">No internet connection. Pull to refresh once you are back online.</string>
+    <string name="error_request_timeout">The request timed out. Please try again.</string>
+    <string name="error_too_many_requests">Too many requests. Please wait a moment.</string>
+    <string name="error_server">Flickr is having trouble. Please try again later.</string>
+    <string name="error_service_unavailable">Service unavailable. Please try again later.</string>
+    <string name="error_serialization">Could not read the photo feed.</string>
+    <string name="error_unauthorized">Unauthorized request.</string>
+    <string name="error_forbidden">Forbidden request.</string>
+    <string name="error_not_found">Photo feed not found.</string>
+    <string name="error_payload_too_large">Photo feed is too large.</string>
+    <string name="error_conflict">Request conflict.</string>
+    <string name="error_bad_request">Bad request.</string>
+    <string name="error_unknown">Something went wrong. Please try again.</string>
 </resources>
