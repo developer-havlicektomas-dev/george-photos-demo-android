@@ -10,7 +10,8 @@
       "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\\\\n\" \"https://api.anthropic.com/v1/design/h/jZkwSIwCQE3WCcOLkXGwug/PhotosApp.html\" -o /tmp/d3.txt)",
       "Bash(python3 *)",
       "Bash(./gradlew :app:assembleDebug)",
-      "Bash(./gradlew :app:lintDebug)"
+      "Bash(./gradlew :app:lintDebug)",
+      "Bash(./gradlew assembleDebug)"
     ]
   }
 }
