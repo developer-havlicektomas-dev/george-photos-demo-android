@@ -53,6 +53,14 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `init fetches with empty tags`() = runTest {
+        val fake = FakePhotoRemoteDataSource(Result.Success(emptyList()))
+        HomeViewModel(fake)
+
+        assertThat(fake.tagsHistory).isEqualTo(listOf(emptyList<String>()))
+    }
+
+    @Test
     fun `init derives distinct sorted non-blank tags`() = runTest {
         val photos = listOf(
             photo("1", tags = listOf("forest", "nature", "")),
@@ -80,7 +88,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `OnRefresh re-fetches and surfaces isRefreshing transition`() = runTest {
+    fun `OnRefresh re-fetches with current selectedTags and surfaces isRefreshing transition`() = runTest {
         val initial = listOf(photo("1"))
         val refreshed = listOf(photo("1"), photo("2"))
         val fake = FakePhotoRemoteDataSource(Result.Success(initial))
@@ -106,11 +114,12 @@ class HomeViewModelTest {
             assertThat(done.photos).isEqualTo(refreshed)
         }
         assertThat(fake.fetchCount).isEqualTo(2)
+        assertThat(fake.lastTags).isEqualTo(emptyList<String>())
     }
 
     @Test
     fun `OnFilterClick opens sheet and copies selectedTags into draftTags`() = runTest {
-        val viewModel = primedViewModel(
+        val (viewModel, _) = primedViewModel(
             photos = listOf(photo("1", tags = listOf("nature"))),
             committedSelected = setOf("nature"),
         )
@@ -144,12 +153,54 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `OnSheetApply commits draft, recomputes filteredPhotos, and closes sheet`() = runTest {
+    fun `OnTagInputChange updates tagInput`() = runTest {
+        val viewModel = HomeViewModel(
+            FakePhotoRemoteDataSource(Result.Success(emptyList())),
+        )
+
+        viewModel.onAction(HomeAction.OnTagInputChange("kit"))
+
+        assertThat(viewModel.state.value.tagInput).isEqualTo("kit")
+    }
+
+    @Test
+    fun `OnAddTypedTag adds trimmed input to draftTags and clears tagInput`() = runTest {
+        val viewModel = HomeViewModel(
+            FakePhotoRemoteDataSource(Result.Success(emptyList())),
+        )
+        viewModel.onAction(HomeAction.OnFilterClick)
+        viewModel.onAction(HomeAction.OnTagInputChange("  kittens  "))
+
+        viewModel.onAction(HomeAction.OnAddTypedTag)
+
+        val state = viewModel.state.value
+        assertThat(state.draftTags).isEqualTo(setOf("kittens"))
+        assertThat(state.tagInput).isEqualTo("")
+    }
+
+    @Test
+    fun `OnAddTypedTag ignores blank input`() = runTest {
+        val viewModel = HomeViewModel(
+            FakePhotoRemoteDataSource(Result.Success(emptyList())),
+        )
+        viewModel.onAction(HomeAction.OnFilterClick)
+        viewModel.onAction(HomeAction.OnTagInputChange("   "))
+
+        viewModel.onAction(HomeAction.OnAddTypedTag)
+
+        val state = viewModel.state.value
+        assertThat(state.draftTags).isEmpty()
+        assertThat(state.tagInput).isEqualTo("   ")
+    }
+
+    @Test
+    fun `OnSheetApply commits draft, refetches with selected tags, and closes sheet`() = runTest {
         val matching = photo("1", tags = listOf("nature", "forest"))
         val nonMatching = photo("2", tags = listOf("city"))
-        val viewModel = HomeViewModel(
-            FakePhotoRemoteDataSource(Result.Success(listOf(matching, nonMatching))),
-        )
+        val fake = FakePhotoRemoteDataSource(Result.Success(listOf(matching, nonMatching)))
+        // Server response for the "forest"-filtered query.
+        fake.queueResponse(Result.Success(listOf(matching)))
+        val viewModel = HomeViewModel(fake)
         viewModel.onAction(HomeAction.OnFilterClick)
         viewModel.onAction(HomeAction.OnDraftTagToggle("forest"))
 
@@ -160,75 +211,103 @@ class HomeViewModelTest {
         assertThat(state.filteredPhotos).isEqualTo(listOf(matching))
         assertThat(state.isFilterSheetOpen).isFalse()
         assertThat(state.draftTags).isEmpty()
+        assertThat(state.tagInput).isEqualTo("")
+        assertThat(fake.lastTags).isEqualTo(listOf("forest"))
     }
 
     @Test
-    fun `OnSheetDismiss closes sheet and discards draft`() = runTest {
-        val viewModel = primedViewModel(
+    fun `OnSheetApply forwards typed tag to the data source`() = runTest {
+        val fake = FakePhotoRemoteDataSource(Result.Success(emptyList()))
+        fake.queueResponse(Result.Success(emptyList()))
+        val viewModel = HomeViewModel(fake)
+        viewModel.onAction(HomeAction.OnFilterClick)
+        viewModel.onAction(HomeAction.OnTagInputChange("kittens"))
+        viewModel.onAction(HomeAction.OnAddTypedTag)
+
+        viewModel.onAction(HomeAction.OnSheetApply)
+
+        assertThat(viewModel.state.value.selectedTags).isEqualTo(setOf("kittens"))
+        assertThat(fake.lastTags).isEqualTo(listOf("kittens"))
+    }
+
+    @Test
+    fun `OnSheetDismiss closes sheet, discards draft, and clears tagInput`() = runTest {
+        val (viewModel, _) = primedViewModel(
             photos = listOf(photo("1", tags = listOf("nature"))),
             committedSelected = setOf("nature"),
         )
         viewModel.onAction(HomeAction.OnFilterClick)
         viewModel.onAction(HomeAction.OnDraftTagToggle("nature")) // unselects in draft
+        viewModel.onAction(HomeAction.OnTagInputChange("typed"))
 
         viewModel.onAction(HomeAction.OnSheetDismiss)
 
         val state = viewModel.state.value
         assertThat(state.isFilterSheetOpen).isFalse()
         assertThat(state.draftTags).isEmpty()
+        assertThat(state.tagInput).isEqualTo("")
         assertThat(state.selectedTags).isEqualTo(setOf("nature")) // committed untouched
     }
 
     @Test
-    fun `OnSheetClear empties draft only`() = runTest {
-        val viewModel = primedViewModel(
+    fun `OnSheetClear empties draft and tagInput`() = runTest {
+        val (viewModel, _) = primedViewModel(
             photos = listOf(photo("1", tags = listOf("nature", "forest"))),
             committedSelected = setOf("nature", "forest"),
         )
         viewModel.onAction(HomeAction.OnFilterClick)
+        viewModel.onAction(HomeAction.OnTagInputChange("typed"))
 
         viewModel.onAction(HomeAction.OnSheetClear)
 
         val state = viewModel.state.value
         assertThat(state.draftTags).isEmpty()
+        assertThat(state.tagInput).isEqualTo("")
         assertThat(state.isFilterSheetOpen).isTrue()
         assertThat(state.selectedTags).isEqualTo(setOf("nature", "forest"))
     }
 
     @Test
-    fun `OnRemoveActiveFilter removes tag from selected and recomputes filteredPhotos`() = runTest {
+    fun `OnRemoveActiveFilter removes tag from selected and refetches with the remaining tags`() = runTest {
         val nature = photo("1", tags = listOf("nature"))
         val city = photo("2", tags = listOf("city"))
-        val viewModel = primedViewModel(
+        val (viewModel, fake) = primedViewModel(
             photos = listOf(nature, city),
             committedSelected = setOf("nature", "city"),
         )
+        // Server response after removing "nature".
+        fake.queueResponse(Result.Success(listOf(city)))
 
         viewModel.onAction(HomeAction.OnRemoveActiveFilter("nature"))
 
         val state = viewModel.state.value
         assertThat(state.selectedTags).isEqualTo(setOf("city"))
         assertThat(state.filteredPhotos).isEqualTo(listOf(city))
+        assertThat(fake.lastTags).isEqualTo(listOf("city"))
     }
 
     @Test
-    fun `OnClearAllActiveFilters empties selected and restores all photos`() = runTest {
+    fun `OnClearAllActiveFilters empties selected and refetches without filters`() = runTest {
         val photos = listOf(
             photo("1", tags = listOf("nature")),
             photo("2", tags = listOf("city")),
         )
-        val viewModel = primedViewModel(
+        val (viewModel, fake) = primedViewModel(
             photos = photos,
             committedSelected = setOf("nature"),
+            committedResult = listOf(photos[0]),
         )
-        // Sanity-check the precondition.
+        // Sanity-check the precondition: priming applied the "nature" filter on the server.
         assertThat(viewModel.state.value.filteredPhotos).isEqualTo(listOf(photos[0]))
+        // Server response after clearing all filters.
+        fake.queueResponse(Result.Success(photos))
 
         viewModel.onAction(HomeAction.OnClearAllActiveFilters)
 
         val state = viewModel.state.value
         assertThat(state.selectedTags).isEmpty()
         assertThat(state.filteredPhotos).isEqualTo(photos)
+        assertThat(fake.lastTags).isEqualTo(emptyList<String>())
     }
 
     @Test
@@ -258,17 +337,24 @@ class HomeViewModelTest {
     /**
      * Loads [photos] via init, then commits [committedSelected] through the sheet flow so the VM
      * is in a state where filters are applied — useful as a starting point for action tests.
+     * The apply step now triggers a fetch; callers can override [committedResult] when the
+     * server-filtered response should differ from [photos].
      */
     private fun primedViewModel(
         photos: List<Photo>,
         committedSelected: Set<String>,
-    ): HomeViewModel {
-        val viewModel = HomeViewModel(FakePhotoRemoteDataSource(Result.Success(photos)))
+        committedResult: List<Photo> = photos,
+    ): Pair<HomeViewModel, FakePhotoRemoteDataSource> {
+        val fake = FakePhotoRemoteDataSource(Result.Success(photos))
+        if (committedSelected.isNotEmpty()) {
+            fake.queueResponse(Result.Success(committedResult))
+        }
+        val viewModel = HomeViewModel(fake)
         if (committedSelected.isNotEmpty()) {
             viewModel.onAction(HomeAction.OnFilterClick)
             committedSelected.forEach { viewModel.onAction(HomeAction.OnDraftTagToggle(it)) }
             viewModel.onAction(HomeAction.OnSheetApply)
         }
-        return viewModel
+        return viewModel to fake
     }
 }

@@ -162,7 +162,10 @@ fun HomeScreen(
             FilterBottomSheet(
                 availableTags = state.availableTags,
                 draftTags = state.draftTags,
+                tagInput = state.tagInput,
                 onToggleTag = { onAction(HomeAction.OnDraftTagToggle(it)) },
+                onTagInputChange = { onAction(HomeAction.OnTagInputChange(it)) },
+                onAddTypedTag = { onAction(HomeAction.OnAddTypedTag) },
                 onClear = { onAction(HomeAction.OnSheetClear) },
                 onCancel = { onAction(HomeAction.OnSheetDismiss) },
                 onApply = { onAction(HomeAction.OnSheetApply) },

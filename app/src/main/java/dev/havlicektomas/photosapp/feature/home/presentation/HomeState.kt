@@ -11,6 +11,7 @@ data class HomeState(
     val availableTags: List<String> = emptyList(),
     val selectedTags: Set<String> = emptySet(),
     val draftTags: Set<String> = emptySet(),
+    val tagInput: String = "",
     val isFilterSheetOpen: Boolean = false,
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
@@ -24,6 +25,8 @@ sealed interface HomeAction {
     data class OnDraftTagToggle(val tag: String) : HomeAction
     data object OnSheetClear : HomeAction
     data object OnSheetApply : HomeAction
+    data class OnTagInputChange(val value: String) : HomeAction
+    data object OnAddTypedTag : HomeAction
     data class OnRemoveActiveFilter(val tag: String) : HomeAction
     data object OnClearAllActiveFilters : HomeAction
     data class OnPhotoClick(val photo: Photo) : HomeAction

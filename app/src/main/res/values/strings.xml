@@ -19,6 +19,8 @@
     <string name="filter_sheet_clear">Clear</string>
     <string name="filter_sheet_cancel">Cancel</string>
     <string name="filter_sheet_apply">Apply</string>
+    <string name="filter_sheet_tag_input_hint">Add a tag</string>
+    <string name="filter_sheet_tag_input_add">Add tag</string>
 
     <!-- Detail screen -->
     <string name="detail_back">Back</string>

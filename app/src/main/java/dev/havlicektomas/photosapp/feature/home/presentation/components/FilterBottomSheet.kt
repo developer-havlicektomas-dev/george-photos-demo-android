@@ -13,13 +13,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -27,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import dev.havlicektomas.photosapp.R
 import dev.havlicektomas.photosapp.core.ui.components.SelectableTagChip
@@ -39,7 +47,10 @@ import dev.havlicektomas.photosapp.core.ui.theme.Fg4
 fun FilterBottomSheet(
     availableTags: List<String>,
     draftTags: Set<String>,
+    tagInput: String,
     onToggleTag: (String) -> Unit,
+    onTagInputChange: (String) -> Unit,
+    onAddTypedTag: () -> Unit,
     onClear: () -> Unit,
     onCancel: () -> Unit,
     onApply: () -> Unit,
@@ -94,6 +105,30 @@ fun FilterBottomSheet(
                 }
             }
 
+            OutlinedTextField(
+                value = tagInput,
+                onValueChange = onTagInputChange,
+                singleLine = true,
+                placeholder = { Text(stringResource(R.string.filter_sheet_tag_input_hint)) },
+                trailingIcon = {
+                    IconButton(
+                        onClick = onAddTypedTag,
+                        enabled = tagInput.isNotBlank(),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = stringResource(R.string.filter_sheet_tag_input_add),
+                        )
+                    }
+                },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { onAddTypedTag() }),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 12.dp),
+            )
+
             Box(
                 modifier = Modifier
                     .weight(1f, fill = false)
@@ -108,7 +143,8 @@ fun FilterBottomSheet(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    availableTags.forEach { tag ->
+                    val chips = (availableTags + draftTags).distinct()
+                    chips.forEach { tag ->
                         SelectableTagChip(
                             label = tag,
                             selected = tag in draftTags,

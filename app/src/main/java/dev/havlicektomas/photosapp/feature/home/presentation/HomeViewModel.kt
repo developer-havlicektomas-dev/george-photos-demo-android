@@ -30,14 +30,17 @@ class HomeViewModel(
 
     fun onAction(action: HomeAction) {
         when (action) {
-            HomeAction.OnRefresh -> loadPhotos(isRefresh = true)
+            HomeAction.OnRefresh -> loadPhotos(
+                isRefresh = true,
+                selectedTags = _state.value.selectedTags,
+            )
 
             HomeAction.OnFilterClick -> _state.update {
                 it.copy(isFilterSheetOpen = true, draftTags = it.selectedTags)
             }
 
             HomeAction.OnSheetDismiss -> _state.update {
-                it.copy(isFilterSheetOpen = false, draftTags = emptySet())
+                it.copy(isFilterSheetOpen = false, draftTags = emptySet(), tagInput = "")
             }
 
             is HomeAction.OnDraftTagToggle -> _state.update {
@@ -47,28 +50,42 @@ class HomeViewModel(
                 it.copy(draftTags = draft)
             }
 
-            HomeAction.OnSheetClear -> _state.update { it.copy(draftTags = emptySet()) }
-
-            HomeAction.OnSheetApply -> _state.update {
-                val newSelected = it.draftTags
-                it.copy(
-                    selectedTags = newSelected,
-                    filteredPhotos = applyFilter(it.photos, newSelected),
-                    isFilterSheetOpen = false,
-                    draftTags = emptySet(),
-                )
+            HomeAction.OnSheetClear -> _state.update {
+                it.copy(draftTags = emptySet(), tagInput = "")
             }
 
-            is HomeAction.OnRemoveActiveFilter -> _state.update {
-                val newSelected = it.selectedTags - action.tag
-                it.copy(
-                    selectedTags = newSelected,
-                    filteredPhotos = applyFilter(it.photos, newSelected),
-                )
+            is HomeAction.OnTagInputChange -> _state.update {
+                it.copy(tagInput = action.value)
             }
 
-            HomeAction.OnClearAllActiveFilters -> _state.update {
-                it.copy(selectedTags = emptySet(), filteredPhotos = it.photos)
+            HomeAction.OnAddTypedTag -> _state.update {
+                val trimmed = it.tagInput.trim()
+                if (trimmed.isEmpty()) it
+                else it.copy(draftTags = it.draftTags + trimmed, tagInput = "")
+            }
+
+            HomeAction.OnSheetApply -> {
+                val newSelected = _state.value.draftTags
+                _state.update {
+                    it.copy(
+                        selectedTags = newSelected,
+                        isFilterSheetOpen = false,
+                        draftTags = emptySet(),
+                        tagInput = "",
+                    )
+                }
+                loadPhotos(isRefresh = false, selectedTags = newSelected)
+            }
+
+            is HomeAction.OnRemoveActiveFilter -> {
+                val newSelected = _state.value.selectedTags - action.tag
+                _state.update { it.copy(selectedTags = newSelected) }
+                loadPhotos(isRefresh = false, selectedTags = newSelected)
+            }
+
+            HomeAction.OnClearAllActiveFilters -> {
+                _state.update { it.copy(selectedTags = emptySet()) }
+                loadPhotos(isRefresh = false, selectedTags = emptySet())
             }
 
             is HomeAction.OnPhotoClick -> viewModelScope.launch {
@@ -77,18 +94,21 @@ class HomeViewModel(
         }
     }
 
-    private fun loadPhotos(isRefresh: Boolean) {
+    private fun loadPhotos(
+        isRefresh: Boolean,
+        selectedTags: Set<String> = emptySet()
+    ) {
         viewModelScope.launch {
             _state.update {
                 if (isRefresh) it.copy(isRefreshing = true, errorMessage = null)
                 else it.copy(isLoading = true, errorMessage = null)
             }
-            photoRemoteDataSource.fetchPhotos()
+            photoRemoteDataSource.fetchPhotos(selectedTags.toList())
                 .onSuccess { photos ->
                     _state.update {
                         it.copy(
                             photos = photos,
-                            filteredPhotos = applyFilter(photos, it.selectedTags),
+                            filteredPhotos = photos,
                             availableTags = deriveTags(photos),
                             isLoading = false,
                             isRefreshing = false,
@@ -108,10 +128,6 @@ class HomeViewModel(
                 }
         }
     }
-
-    private fun applyFilter(photos: List<Photo>, selected: Set<String>): List<Photo> =
-        if (selected.isEmpty()) photos
-        else photos.filter { photo -> photo.tags.any { it in selected } }
 
     private fun deriveTags(photos: List<Photo>): List<String> =
         photos.flatMap { it.tags }

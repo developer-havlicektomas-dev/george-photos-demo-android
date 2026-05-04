@@ -12,12 +12,15 @@ import io.ktor.client.HttpClient
 class KtorPhotoRemoteDataSource(
     private val httpClient: HttpClient,
 ) : PhotoRemoteDataSource {
-    override suspend fun fetchPhotos(): Result<List<Photo>, DataError.Network> {
+    override suspend fun fetchPhotos(
+        tags: List<String>
+    ): Result<List<Photo>, DataError.Network> {
         return httpClient.get<FlickrFeedDto>(
             route = HttpRoutes.PUBLIC_PHOTOS_FEED,
             queryParameters = mapOf(
                 "format" to "json",
                 "nojsoncallback" to 1,
+                "tags" to tags
             ),
         ).map { it.toPhotos() }
     }

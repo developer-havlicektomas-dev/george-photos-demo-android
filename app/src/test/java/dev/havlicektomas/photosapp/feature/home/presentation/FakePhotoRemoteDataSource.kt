@@ -18,6 +18,10 @@ class FakePhotoRemoteDataSource(
     var fetchCount: Int = 0
         private set
 
+    private val _tagsHistory: MutableList<List<String>> = mutableListOf()
+    val tagsHistory: List<List<String>> get() = _tagsHistory
+    val lastTags: List<String> get() = _tagsHistory.last()
+
     fun queueResponse(result: Result<List<Photo>, DataError.Network>) {
         responses.add(result)
     }
@@ -31,8 +35,11 @@ class FakePhotoRemoteDataSource(
         nextGate = null
     }
 
-    override suspend fun fetchPhotos(): Result<List<Photo>, DataError.Network> {
+    override suspend fun fetchPhotos(
+        tags: List<String>
+    ): Result<List<Photo>, DataError.Network> {
         fetchCount++
+        _tagsHistory.add(tags)
         nextGate?.await()
         return responses.removeFirstOrNull() ?: Result.Success(emptyList())
     }
